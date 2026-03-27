@@ -1,0 +1,121 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+#Read data
+data = pd.read_csv('data.csv')  #data.csv를 읽어서 변수data에 DataFrame을 저장
+print(data.head())  #data 앞에 있는 5개 출력
+inputs = data[data.columns[:2]].values  #앞쪽 2개의 열에 있는 값들을 변수inputs에 저장
+target = data['class'].values   #정답 레이블 열인 class에 있는 값들 target에 저장
+
+print(inputs)
+print(target)
+#Visualize the data
+passed = (target == 1).reshape(-1,1) #reshape(-1,1) 열(column)은 1개로 고정하고 행은 데이터에 맞춰 저장
+failed = (target == 0).reshape(-1,1)
+print(passed)
+print(failed)
+
+plt.figure(1)
+plt.scatter(x = inputs[passed[:, 0], 0], #passed 행안에 있는 True만 골라서 그 true의 inputs의 0번째 열의 값을 저장
+            y = inputs[passed[:, 0], 1],
+            marker = "^",
+            color = 'green',
+            s = 60)
+plt.scatter(x = inputs[failed[:, 0], 0],
+            y = inputs[failed[:, 0], 1],
+            marker = "X",
+            color = 'red',
+            s = 60)
+
+plt.xlabel("x1")
+plt.ylabel("x2")
+plt.legend(["Passed", "Failed"])
+plt.show()
+
+#Logistic Regression 구현
+import numpy as np
+
+def sigmoid(x):             #0과 1사이의 값으로 바꿔줌
+    return 1 / (1 + np.exp(-x))
+
+def compute_cost(theta, x, y): #theta가 weight
+    m = len(y)      #데이터의 개수
+    y_pred = sigmoid(np.dot(x, theta))  #x (dot product) w(theta)
+    error = (y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))   #각 데이터 마다의 에러값 구하는것
+    cost = -1 / m * sum(error)    #평균 에러값 -가 붙은 이유는 log값이 음수이기 때문
+    gradient = 1 / m * np.dot(x.transpose(), (y_pred - y)) ##cost는 theta로 미분한 값, 
+                                                            #예측이 실제보다 크면 줄이는 방향
+                                                            #예측이 실제보다 작으면 늘리는 방향
+    return cost[0], gradient        
+
+#Feature 분리
+x1 = inputs[:, 0].reshape(-1, 1) 
+x2 = inputs[:, 1].reshape(-1, 1)
+
+#normalization for stable  (z-score normalization)
+mean_inputs = np.mean(inputs, axis=0)  #axis =0는 세로 방향으로 mean값을 구하라는 의미 -> 각 feature의 평균
+std_inputs = np.std(inputs, axis=0)   # 각 feature 마다 표준편차 구하라
+inputs = (inputs - mean_inputs) / std_inputs # z-score normalization
+
+rows = inputs.shape[0] #샘플 수 저장
+cols = inputs.shape[1]  #feature 개수 저장
+
+
+X = np.append(np.ones((rows, 1)), inputs, axis=1)  #가로 형태로 1값을 열마다 하나씩 추가
+y = target.reshape(rows, 1)   #target 열벡터로 변환
+
+
+theta_init = np.zeros((cols + 1, 1))   # theta -> [w1, w2, w3]
+cost, gradient = compute_cost(theta_init, X, y)
+
+print("Cost at initialization", cost)
+print("Gradient at initialization:", gradient)
+
+#Gradient Descent 구현
+def gradient_descent(x, y, theta, alpha, iterations):    #alpha: 학습률(learning rate)
+    costs = []
+    for i in range(iterations):
+        cost, gradient = compute_cost(theta, x, y)
+        theta -= (alpha * gradient)
+        costs.append(cost)
+    return theta, costs
+
+#학습 실행
+theta, costs = gradient_descent(X, y, theta_init, 1 ,5000)   #학습된 theta와 매 반복의 costs 값들
+
+#예측 함수
+def predict(theta, x):
+    results = x.dot(theta)
+    return results > 0
+
+#결과 출력
+print(theta)
+p = predict(theta, X)
+print("Training Accuracy:", sum(p==y)[0], "%")  #sum(p==y)는 맞은 개수 출력
+
+#Decision Boundary 그리기 준비
+plt.figure(2)
+#각 feature의 최솟값부터 최댓값까지 100의 점 생성
+u_orig = np.linspace(data.iloc[:, 0].min(), data.iloc[:, 0].max(), 100)
+v_orig = np.linspace(data.iloc[:, 1].min(), data.iloc[:, 1].max(), 100)
+U_orig, V_orig = np.meshgrid(u_orig, v_orig)   #2차원 평면에 격자점 생성
+
+#격자데이터를 모델 입력 형식으로 변환
+#2차원 평면 위의 모든 좌표 (x1, x2) 목록을 만드는 코드
+grid_raw = np.c_[U_orig.ravel(), V_orig.ravel()]  #ravel은 배열을 1차원으로 펴는것, np.c_[]는 안에 있는 값을 column으로 붙이는 함수
+grid_poly = np.hstack([
+    grid_raw[:, 0:1],
+    grid_raw[:, 1:2]])
+
+#격자도 정규화
+grid_norm = (grid_poly - mean_inputs) / std_inputs
+
+#bias 추가
+grid_final = np.append(np.ones((grid_norm.shape[0], 1)),grid_norm, axis=1)   #bias용 1을 앞에 붙여서 (N, 3)형태로 만듦
+
+#격자 전체에 대한 선형값 계산
+Z = grid_final.dot(theta).reshape(U_orig.shape)
+
+#contour용  축 격자화
+u_norm = (u_orig - mean_inputs[0]) / std_inputs[0]
+v_norm = (v_orig - mean_inputs[1]) / std_inputs[1]
