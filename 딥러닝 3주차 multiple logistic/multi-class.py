@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import gzip
 from load_data import load_data
 
-path = '딥러닝 3주차 multiple logistic/dataset/MNIST/{}.gz'
+path = "C:/Users/1clas/딥러닝 실습/딥러닝 3주차 multiple logistic/dataset/MNIST/{}.gz"
 X_train, Y_train, X_test, Y_test = load_data(path, n_label=10)
 
 # Normalize data in [0 1]
@@ -113,7 +113,7 @@ for i in range(epoch):
             plt.plot(arr_cost9, label='for class 9')
             plt.plot(arr_cost10, label='for class 10')
             plt.legend(loc='upper right')
-            plt.pause(0.00001)
+            #plt.pause(0.00001)
 
 # Test
 y_pred1 = sigmoid(np.dot(X_test , theta_1))
