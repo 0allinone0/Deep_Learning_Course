@@ -1,5 +1,5 @@
 import numpy as np
-
+#%%
 class perceptron():  # one layer perceptron
     def __init__(self, c_in, c_out, patch_sz, is_final=False):
         # c_in is the number of input neuron
